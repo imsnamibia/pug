@@ -1,0 +1,160 @@
+#!/bin/sh
+#
+#
+
+. /protop/bin/protopenv
+
+. ${HOME}/bin/dlenv
+
+# 
+# modify to taste
+#
+
+DBBLOCK=8
+BIBLOCK=16
+AIBLOCK=16
+BICLSTR=65536		# 32768, 65536, 131072, 262144
+
+#
+# it should not be necessary to modify anything below this point
+#
+
+case "${DBBLOCK}" in
+
+	"4")
+		DBBLOCKSZ=4096
+		;;
+
+	"8")
+		DBBLOCKSZ=8192
+		;;
+
+	*)
+		echo "Refusing to create a db with a bogus block size."
+		exit
+		;;
+esac
+
+umask 0
+
+cd ${TGTDIR}
+
+if [ -f ${DB}.lk ]
+then
+	echo "shutting down ${DB}"
+	proshut -by ${DB}
+fi
+
+if [ -f ${DB}.db ]
+then
+	echo "deleting ${DB}"
+	echo "y" | prodel ${DB}
+fi
+
+echo ""
+echo "Creating Database ${DB}..."
+echo ""
+
+${DLC}/bin/prostrct create ${DB} ${HOME}/build/${DB}.st -blocksize ${DBBLOCKSZ} -validate
+
+# unknown problem with -validate :(
+#
+# if [ $? -ne 0 ]
+# then
+# 	echo ""
+# 	echo "That didn't work!"
+# 	exit
+# fi
+
+${DLC}/bin/prostrct create ${DB} ${HOME}/build/${DB}.st -blocksize ${DBBLOCKSZ}
+
+if [ $? -ne 0 ]
+then
+	echo ""
+	echo "That didn't work!"
+	exit
+fi
+
+${DLC}/bin/procopy ${DLC}/empty8 ${DB}
+
+${DLC}/bin/_proutil ${DB} -C truncate bi -bi ${BICLSTR} -biblocksize ${BIBLOCK} -G 0
+
+${DLC}/bin/_rfutil  ${DB} -C aimage truncate -aiblocksize ${AIBLOCK}
+
+${DLC}/bin/_proutil ${DB} -C enablelargefiles -G 0
+
+${DLC}/bin/_proutil ${DB} -C enablelargekeys -G 0
+
+${DLC}/bin/_proutil ${DB} -C enableb2 "Schema Area"
+
+echo ""
+echo "Growing BI file..."
+echo ""
+
+${DLC}/bin/_proutil ${DB} -C bigrow 12 -G 0
+
+sleep 2
+
+echo ""
+echo "Starting db server..."
+echo ""
+
+if [ -f ${DB}.pf ]
+then
+	${DLC}/bin/proserve ${DB} -pf ${DB}.pf
+elif [ -f ${HOME}/build/${DB}.pf ]
+then
+	${DLC}/bin/proserve ${DB} -pf ${HOME}/build/${DB}.pf
+elif [ -f ${PROTOP}/etc/build.pf ]
+then
+	${DLC}/bin/proserve ${DB} -pf ${PROTOP}/etc/build.pf
+else
+	${DLC}/bin/proserve ${DB}
+fi
+
+if [ $? -ne 0 ]
+then
+	echo ""
+	echo "That didn't work!"
+	exit
+fi
+
+sleep 1
+
+probiw ${DB}
+sleep 1
+
+proapw ${DB}
+proapw ${DB}
+sleep 1
+
+if [ -f ${DB}.lk ]
+then
+
+	echo ""
+	echo "Loading data definitions..."
+	echo ""
+
+	${DLC}/bin/_progres -b ${DB} -r -p ${HOME}/util/loaddf.p -param ${HOME}/build/${DB}.df.noarea > ${DL_LGDIR}/loaddf.log
+
+	sleep 2
+
+	if [ -x ${HOME}/build/${DB}.tblmv.sh ]
+	then
+
+		echo ""
+		echo "Moving tables and indexes..."
+		echo ""
+
+		${HOME}/build/${DB}.tblmv.sh
+
+	fi
+fi
+
+${DLC}/bin/_progres -b ${DB} -p ${HOME}/util/dumpdf.p -param ${HOME}/build/${DB}.df.new > ${DL_LGDIR}/newdf.log
+
+probkup online ${DB} /bak/${DB}.pbk.empty -com
+
+echo ""
+echo "Ready!"
+echo ""

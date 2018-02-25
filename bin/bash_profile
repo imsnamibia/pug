@@ -1,0 +1,24 @@
+# .bash_profile
+
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+	. ~/.bashrc
+fi
+
+# User specific environment and startup programs
+
+PROTOP=/protop
+
+PATH=$PATH:$HOME/bin:$PROTOP/bin:.
+
+export PROTOP PATH
+
+. protopenv
+. dlenv
+
+echo $TERM | grep xterm > /dev/null 2>&1
+
+if [ $? = 0 ]
+then
+	TERM=xterm
+fi

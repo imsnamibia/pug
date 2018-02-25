@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# dlenv - common environment for dl scripts
+#
+
+DB=wshop
+SRCDIR=/old
+TGTDIR=/new
+
+DBX=/old/wshop
+
+DL=/dl		           # shared directory for the dump & load files
+
+# DUMPOPT='-RO'            # sometimes used for dump, otherwise ignored
+
+DUMPDIR=${DL}/dump
+STGDIR=${DL}/stage
+LOADDIR=${DL}/load
+DL_LGDIR=${DL}/log
+ARCDIR=${DL}/arc
+
+export DB DL DUMPOPT DUMPDIR STGDIR LOADDIR DL_LGDIR ARCDIR TGTDIR
+
+mkdir ${DL} ${DUMPDIR} ${STGDIR} ${LOADDIR} ${DL_LGDIR} ${ARCDIR} ${TGTDIR} 2>/dev/null
+
+dumptable() {
+
+        date > ${DL_LGDIR}/${1}.dump.log 2>&1
+
+        if [ ! -z "${2}" ]        # if an index nmber is passed use the -index option
+        then
+                echo _proutil ${DUMPOPT} ${SRCDIR}/${DB} -C dump ${1} ${DUMPDIR} -index ${2} ${TOPT} >> ${DL_LGDIR}/${1}.dump.log 2>&1
+                _proutil ${DUMPOPT} ${SRCDIR}/${DB} -C dump ${1} ${DUMPDIR} -index ${2} ${TOPT} >> ${DL_LGDIR}/${1}.dump.log 2>&1
+        else
+                echo _proutil ${DUMPOPT} ${SRCDIR}/${DB} -C dump ${1} ${DUMPDIR} ${TOPT} >> ${DL_LGDIR}/${1}.dump.log 2>&1
+                _proutil ${DUMPOPT} ${SRCDIR}/${DB} -C dump ${1} ${DUMPDIR} ${TOPT} >> ${DL_LGDIR}/${1}.dump.log 2>&1
+        fi
+
+        echo mv ${DUMPDIR}/${1}.bd* ${STGDIR} >> ${DL_LGDIR}/${1}.dump.log 2>&1
+        mv ${DUMPDIR}/${1}.bd* ${STGDIR} >> ${DL_LGDIR}/${1}.dump.log 2>&1
+
+        date >> ${DL_LGDIR}/${1}.dump.log 2>&1
+
+}
+

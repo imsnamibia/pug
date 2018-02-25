@@ -1,0 +1,11 @@
+# .bashrc
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+# User specific aliases and functions
+
+alias nmon='sudo /usr/local/bin/nmon -s 5'	# c, m, 5 (5 is root only, thus the sudo)
+
